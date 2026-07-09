@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
@@ -93,13 +94,11 @@ export default function RegisterPage() {
             <label htmlFor="password" className="mb-1 block text-sm font-medium text-sky-800">
               Password
             </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-sky-200 px-4 py-3 outline-none ring-sky-300 focus:ring-2"
             />
           </div>
 
