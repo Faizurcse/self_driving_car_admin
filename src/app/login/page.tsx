@@ -43,7 +43,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-sky-700">
             mr<span className="text-sky-500">Matterz</span>
           </h1>
-          <p className="mt-2 text-sm text-sky-600">Admin Panel Login</p>
+          <p className="mt-2 text-sm text-sky-600">Owner Panel Login</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

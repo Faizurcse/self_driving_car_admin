@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { formatUserType } from '@/lib/user-type';
 
 const navLinks = [
   {
@@ -15,6 +16,19 @@ const navLinks = [
           strokeLinecap="round"
           strokeLinejoin="round"
           d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+        />
+      </svg>
+    ),
+  },
+  {
+    href: '/users',
+    label: 'Users',
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
         />
       </svg>
     ),
@@ -52,7 +66,7 @@ function CompanyLogo() {
   return (
     <span className="group relative inline-flex max-w-full rounded-xl bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-500 p-[1.5px] shadow-md shadow-orange-300/40 transition duration-300 hover:shadow-orange-400/50 sm:rounded-2xl sm:p-[2px] sm:shadow-lg">
       <span className="inline-flex min-w-0 items-center rounded-[11px] bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-100 px-2 py-1 sm:rounded-2xl sm:px-3 sm:py-2">
-        <span className="min-w-0 flex flex-col leading-none font-manrope">
+        <span className="min-w-0 flex flex-col leading-none">
           <span className="text-[7px] font-bold uppercase tracking-[0.16em] text-orange-600/80 sm:text-[9px] sm:tracking-[0.22em]">
             Self Drive
           </span>
@@ -202,7 +216,7 @@ export default function Navbar() {
               <div className="pr-1">
                 <p className="text-xs font-semibold leading-tight text-white">{user?.name}</p>
                 <p className="text-[10px] font-medium uppercase tracking-wide text-sky-100">
-                  {user?.userType}
+                  {user?.userType ? formatUserType(user.userType) : ''}
                 </p>
               </div>
             </div>
@@ -256,7 +270,7 @@ export default function Navbar() {
                   <p className="truncate font-bold text-white">{user?.name}</p>
                   <p className="truncate text-sm text-sky-100">{user?.mobile}</p>
                   <span className="mt-1 inline-flex rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                    {user?.userType}
+                    {user?.userType ? formatUserType(user.userType) : ''}
                   </span>
                 </div>
               </div>

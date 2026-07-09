@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-sans: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
 :root {
   --background: #f0f9ff;
   --foreground: #0c4a6e;
@@ -8,17 +12,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.font-manrope {
-  font-family: var(--font-manrope), var(--font-inter), Arial, Helvetica, sans-serif;
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
 }
 
 body.nav-open {

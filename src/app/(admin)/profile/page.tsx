@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import PasswordInput from '@/components/PasswordInput';
+import { formatUserType } from '@/lib/user-type';
 
 function formatDate(value?: string) {
   if (!value) return '—';
@@ -164,7 +165,7 @@ export default function ProfilePage() {
             Profile Settings
           </h1>
           <p className="mx-auto mt-2 max-w-lg text-xs text-sky-100/90 sm:mx-0 sm:text-sm">
-            Manage your details and keep your admin account secure.
+            Manage your details and keep your owner account secure.
           </p>
         </div>
       </div>
@@ -188,7 +189,7 @@ export default function ProfilePage() {
                 <p className="mt-0.5 text-sm text-sky-400">{user?.mobile}</p>
                 <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                  {user?.userType}
+                  {user?.userType ? formatUserType(user.userType) : ''}
                 </span>
               </div>
             </div>

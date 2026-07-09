@@ -39,8 +39,26 @@ export async function getUserTypesRequest(token: string) {
   return apiRequest<UserType[]>('/admin/types', { method: 'GET' }, token);
 }
 
-export async function getAllUsersRequest(token: string) {
-  return apiRequest<User[]>('/admin/users', { method: 'GET' }, token);
+export async function getAllUsersRequest(
+  token: string,
+  filters: {
+    name?: string;
+    email?: string;
+    mobile?: string;
+    userType?: UserType | '';
+  } = {},
+) {
+  const params = new URLSearchParams();
+
+  if (filters.name?.trim()) params.set('name', filters.name.trim());
+  if (filters.email?.trim()) params.set('email', filters.email.trim());
+  if (filters.mobile?.trim()) params.set('mobile', filters.mobile.trim());
+  if (filters.userType) params.set('userType', filters.userType);
+
+  const query = params.toString();
+  const endpoint = query ? `/admin/users?${query}` : '/admin/users';
+
+  return apiRequest<User[]>(endpoint, { method: 'GET' }, token);
 }
 
 export async function updateUserRequest(

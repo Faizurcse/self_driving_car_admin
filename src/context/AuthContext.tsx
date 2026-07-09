@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { user: loggedInUser, accessToken } = response.data;
 
     if (loggedInUser.userType !== 'ADMIN') {
-      throw new ApiError('Only admin users can access this panel', 403);
+      throw new ApiError('Only owner users can access this panel', 403);
     }
 
     setAuthSession(accessToken, loggedInUser);
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (registeredUser.userType !== 'ADMIN') {
         clearAuthSession();
         throw new ApiError(
-          'Registration successful, but admin access requires ADMIN role. Contact an existing admin.',
+          'Registration successful, but owner access requires Owner role. Contact an existing owner.',
           403,
         );
       }
