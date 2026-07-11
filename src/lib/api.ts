@@ -39,3 +39,30 @@ export async function apiRequest<T>(
 
   return data;
 }
+
+export async function apiFormRequest<T>(
+  endpoint: string,
+  formData: FormData,
+  token?: string | null,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<ApiResponse<T>> {
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method,
+    headers,
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(data.message || 'Request failed', response.status);
+  }
+
+  return data;
+}

@@ -20,3 +20,31 @@ export interface AuthData {
   user: User;
   accessToken: string;
 }
+
+export interface PriceInfo {
+  price: number | string;
+  timing: string | number;
+  description: string;
+}
+
+export interface Car {
+  id: string;
+  carNumber: string;
+  carName: string;
+  description: string;
+  modelNo: string;
+  mainImage: string;
+  galleryImages: string[];
+  ownerPrices?: PriceInfo | null;
+  dealerPrices: PriceInfo;
+  customerPrices: PriceInfo;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CarFilters {
+  carNumber?: string;
+  carName?: string;
+  description?: string;
+  modelNo?: string;
+}

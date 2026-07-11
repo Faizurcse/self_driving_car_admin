@@ -1,5 +1,5 @@
-import { apiRequest } from '@/lib/api';
-import type { AuthData, User, UserType } from '@/types';
+import { apiFormRequest, apiRequest } from '@/lib/api';
+import type { AuthData, Car, CarFilters, User, UserType } from '@/types';
 
 export async function loginRequest(identifier: string, password: string) {
   return apiRequest<AuthData>('/auth/login', {
@@ -83,4 +83,34 @@ export async function updateUserTypeRequest(token: string, userId: string, userT
 
 export async function deleteUserRequest(token: string, userId: string) {
   return apiRequest<User>(`/admin/users/${userId}`, { method: 'DELETE' }, token);
+}
+
+export async function getAdminCarsRequest(token: string, filters: CarFilters = {}) {
+  const params = new URLSearchParams();
+
+  if (filters.carNumber?.trim()) params.set('carNumber', filters.carNumber.trim());
+  if (filters.carName?.trim()) params.set('carName', filters.carName.trim());
+  if (filters.description?.trim()) params.set('description', filters.description.trim());
+  if (filters.modelNo?.trim()) params.set('modelNo', filters.modelNo.trim());
+
+  const query = params.toString();
+  const endpoint = query ? `/cars/admin?${query}` : '/cars/admin';
+
+  return apiRequest<Car[]>(endpoint, { method: 'GET' }, token);
+}
+
+export async function getAdminCarByIdRequest(token: string, carId: string) {
+  return apiRequest<Car>(`/cars/admin/${carId}`, { method: 'GET' }, token);
+}
+
+export async function createCarRequest(token: string, formData: FormData) {
+  return apiFormRequest<Car>('/cars', formData, token, 'POST');
+}
+
+export async function updateCarRequest(token: string, carId: string, formData: FormData) {
+  return apiFormRequest<Car>(`/cars/${carId}`, formData, token, 'PUT');
+}
+
+export async function deleteCarRequest(token: string, carId: string) {
+  return apiRequest<Car>(`/cars/${carId}`, { method: 'DELETE' }, token);
 }

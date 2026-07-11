@@ -6,6 +6,20 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { formatUserType } from '@/lib/user-type';
 
+function VehicleIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 17h.01M17 17h.01M5 11l1.5-4.5A2 2 0 018.44 5h7.12a2 2 0 011.94 1.5L19 11M5 11h14v5a1 1 0 01-1 1h-1a2 2 0 01-4 0H9a2 2 0 01-4 0H4a1 1 0 01-1-1v-5z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8h6M4 11h16" />
+      <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 const navLinks = [
   {
     href: '/dashboard',
@@ -34,6 +48,11 @@ const navLinks = [
     ),
   },
   {
+    href: '/cars',
+    label: 'Cars',
+    icon: <VehicleIcon />,
+  },
+  {
     href: '/profile',
     label: 'Profile',
     icon: (
@@ -47,20 +66,6 @@ const navLinks = [
     ),
   },
 ];
-
-function VehicleIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M7 17h.01M17 17h.01M5 11l1.5-4.5A2 2 0 018.44 5h7.12a2 2 0 011.94 1.5L19 11M5 11h14v5a1 1 0 01-1 1h-1a2 2 0 01-4 0H9a2 2 0 01-4 0H4a1 1 0 01-1-1v-5z"
-      />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8h6M4 11h16" />
-      <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
 
 function CompanyLogo() {
   return (
