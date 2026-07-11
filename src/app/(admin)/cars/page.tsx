@@ -7,13 +7,16 @@ import { getImageUrl } from '@/lib/image-url';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { formatPriceWithTiming } from '@/lib/price';
 import {
+  cancelBookingRequest,
+  createBookingRequest,
   createCarRequest,
   deleteCarRequest,
   getAdminCarsRequest,
+  getCarsBookingStatusRequest,
   updateCarRequest,
 } from '@/lib/services';
 import { useAuth } from '@/context/AuthContext';
-import type { Car } from '@/types';
+import type { Car, CarBookingStatusItem } from '@/types';
 
 const inputClass =
   'w-full min-h-[48px] rounded-xl border border-sky-100 bg-sky-50/40 px-4 py-3 text-sky-900 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100';
@@ -212,19 +215,55 @@ function FilterField({
   );
 }
 
+function StatusBadge({
+  status,
+  isOwn,
+}: {
+  status?: CarBookingStatusItem['status'];
+  isOwn?: boolean;
+}) {
+  if (isOwn) {
+    return (
+      <span className="inline-flex rounded-full bg-violet-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+        Your booking
+      </span>
+    );
+  }
+
+  const isBooked = status === 'NOT_AVAILABLE';
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide shadow-sm ${
+        isBooked ? 'bg-red-500/95 text-white' : 'bg-emerald-500/95 text-white'
+      }`}
+    >
+      {isBooked ? 'Unavailable' : 'Available'}
+    </span>
+  );
+}
+
 function CarCard({
   car,
+  status,
+  isOwnBooking,
   busy,
   onOpen,
   onEdit,
   onDelete,
+  onBook,
+  onCancel,
 }: {
   car: Car;
+  status?: CarBookingStatusItem;
+  isOwnBooking: boolean;
   busy: boolean;
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onBook: () => void;
+  onCancel: () => void;
 }) {
+  const isUnavailable = status?.isBooked && !isOwnBooking;
   return (
     <article className="group overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-sky-100 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-100/80 hover:ring-sky-200">
       <button
@@ -239,13 +278,16 @@ function CarCard({
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-sky-950/70 via-transparent to-transparent" />
+          <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+            <span className="inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-700 shadow-sm">
+              {car.carNumber}
+            </span>
+            {status && <StatusBadge status={status.status} isOwn={isOwnBooking} />}
+          </div>
           <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-sky-600 opacity-0 shadow transition group-hover:opacity-100">
             View details →
           </div>
           <div className="absolute bottom-3 left-3 right-3">
-            <span className="inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-700">
-              {car.carNumber}
-            </span>
             <h3 className="mt-2 text-lg font-bold text-white drop-shadow">{car.carName}</h3>
             <p className="text-xs font-medium text-sky-100">Model {car.modelNo}</p>
           </div>
@@ -292,29 +334,69 @@ function CarCard({
         </div>
       </button>
 
-      <div className="flex gap-2 border-t border-sky-50 px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-          disabled={busy}
-          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:opacity-50"
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          disabled={busy}
-          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-100 bg-red-50 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
-        >
-          Delete
-        </button>
+      <div className="space-y-2 border-t border-sky-50 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+        {isOwnBooking ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
+            disabled={busy}
+            className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+          >
+            {busy ? 'Cancelling...' : 'Cancel Booking'}
+          </button>
+        ) : status?.isBooked ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
+            disabled={busy}
+            className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-sm font-bold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+          >
+            {busy ? 'Cancelling...' : 'Cancel Active Booking'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook();
+            }}
+            disabled={busy || isUnavailable}
+            className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-sm font-bold text-white shadow-sm transition hover:shadow-md disabled:opacity-50"
+          >
+            {busy ? 'Booking...' : 'Book Car'}
+          </button>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            disabled={busy}
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 text-sm font-semibold text-white shadow-sm transition hover:shadow-md disabled:opacity-50"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            disabled={busy}
+            className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-100 bg-red-50 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -905,10 +987,12 @@ function CarFormModal({
 export default function CarsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const [cars, setCars] = useState<Car[]>([]);
+  const [statusMap, setStatusMap] = useState<Record<string, CarBookingStatusItem>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({
     carNumber: '',
@@ -922,10 +1006,27 @@ export default function CarsPage() {
   const [saving, setSaving] = useState(false);
   const [actionCarId, setActionCarId] = useState<string | null>(null);
   const [deletingCar, setDeletingCar] = useState<Car | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<{
+    carId: string;
+    bookingId: string;
+    carName: string;
+  } | null>(null);
+  const [bookTarget, setBookTarget] = useState<Car | null>(null);
 
   const activeFilterCount = useMemo(
     () => Object.values(filters).filter(Boolean).length,
     [filters],
+  );
+
+  const availableCount = useMemo(
+    () => cars.filter((car) => !statusMap[car.id]?.isBooked).length,
+    [cars, statusMap],
+  );
+
+  const isOwnBooking = useCallback(
+    (status?: CarBookingStatusItem) =>
+      Boolean(status?.bookedBy && user?.id && status.bookedBy.userId === user.id),
+    [user?.id],
   );
 
   const loadCars = useCallback(async () => {
@@ -933,8 +1034,16 @@ export default function CarsPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await getAdminCarsRequest(token, filters);
-      setCars(res.data);
+      const [carsRes, statusRes] = await Promise.all([
+        getAdminCarsRequest(token, filters),
+        getCarsBookingStatusRequest(token),
+      ]);
+      setCars(carsRes.data);
+      const map: Record<string, CarBookingStatusItem> = {};
+      statusRes.data.forEach((item) => {
+        map[item.carId] = item;
+      });
+      setStatusMap(map);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to load cars');
     } finally {
@@ -948,6 +1057,49 @@ export default function CarsPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [loadCars]);
+
+  const showNotice = (message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice(''), 4000);
+  };
+
+  const confirmBook = async () => {
+    if (!token || !bookTarget) return;
+    const timing = String(bookTarget.customerPrices?.timing ?? 24);
+
+    setActionCarId(bookTarget.id);
+    setError('');
+    try {
+      await createBookingRequest(token, {
+        carId: bookTarget.id,
+        carNumber: bookTarget.carNumber,
+        timing,
+      });
+      showNotice(`${bookTarget.carName} booked successfully.`);
+      setBookTarget(null);
+      await loadCars();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to book car');
+    } finally {
+      setActionCarId(null);
+    }
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!token || !cancelTarget) return;
+    setActionCarId(cancelTarget.carId);
+    setError('');
+    try {
+      await cancelBookingRequest(token, cancelTarget.bookingId);
+      showNotice(`Booking for ${cancelTarget.carName} cancelled.`);
+      setCancelTarget(null);
+      await loadCars();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to cancel booking');
+    } finally {
+      setActionCarId(null);
+    }
+  };
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -1053,11 +1205,21 @@ export default function CarsPage() {
             <p className="mt-1 text-2xl font-bold">{cars.length}</p>
           </div>
           <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
+            <p className="text-xs uppercase text-sky-100">Available</p>
+            <p className="mt-1 text-2xl font-bold">{availableCount}</p>
+          </div>
+          <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
             <p className="text-xs uppercase text-sky-100">Filters Active</p>
             <p className="mt-1 text-2xl font-bold">{activeFilterCount}</p>
           </div>
         </div>
       </section>
+
+      {notice && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {notice}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -1157,16 +1319,30 @@ export default function CarsPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {cars.map((car) => (
-            <CarCard
-              key={car.id}
-              car={car}
-              busy={actionCarId === car.id}
-              onOpen={() => router.push(`/cars/${car.id}`)}
-              onEdit={() => openEdit(car)}
-              onDelete={() => setDeletingCar(car)}
-            />
-          ))}
+          {cars.map((car) => {
+            const status = statusMap[car.id];
+            const ownBooking = isOwnBooking(status);
+            const bookingId = status?.bookedBy?.bookingId;
+
+            return (
+              <CarCard
+                key={car.id}
+                car={car}
+                status={status}
+                isOwnBooking={ownBooking}
+                busy={actionCarId === car.id}
+                onOpen={() => router.push(`/cars/${car.id}`)}
+                onEdit={() => openEdit(car)}
+                onDelete={() => setDeletingCar(car)}
+                onBook={() => setBookTarget(car)}
+                onCancel={() => {
+                  if (bookingId) {
+                    setCancelTarget({ carId: car.id, bookingId, carName: car.carName });
+                  }
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -1194,6 +1370,36 @@ export default function CarsPage() {
           onSubmit={handleUpdate}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(bookTarget)}
+        title="Confirm booking?"
+        message={
+          bookTarget
+            ? `Book ${bookTarget.carName} (${bookTarget.carNumber}) for ${String(bookTarget.customerPrices?.timing ?? 24)} hours?`
+            : ''
+        }
+        confirmLabel="Yes, book"
+        cancelLabel="Not now"
+        loading={Boolean(bookTarget && actionCarId === bookTarget.id)}
+        onConfirm={confirmBook}
+        onCancel={() => setBookTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        title="Cancel booking?"
+        message={
+          cancelTarget
+            ? `Cancel the active booking for ${cancelTarget.carName}? The car will become available again.`
+            : ''
+        }
+        confirmLabel="Yes, cancel"
+        cancelLabel="Keep booking"
+        loading={Boolean(cancelTarget && actionCarId === cancelTarget.carId)}
+        onConfirm={confirmCancelBooking}
+        onCancel={() => setCancelTarget(null)}
+      />
 
       <ConfirmDialog
         open={!!deletingCar}

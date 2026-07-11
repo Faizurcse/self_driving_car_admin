@@ -7,9 +7,16 @@ import { ApiError } from '@/lib/api';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { getImageUrl } from '@/lib/image-url';
 import { formatPriceWithTiming } from '@/lib/price';
-import { deleteCarRequest, getAdminCarByIdRequest } from '@/lib/services';
+import {
+  cancelBookingRequest,
+  createBookingRequest,
+  deleteCarRequest,
+  getAdminCarByIdRequest,
+  getCarsBookingStatusRequest,
+  updateCarBookingStatusRequest,
+} from '@/lib/services';
 import { useAuth } from '@/context/AuthContext';
-import type { Car } from '@/types';
+import type { BookingStatus, Car, CarBookingStatusItem } from '@/types';
 
 function PriceCard({
   title,
@@ -49,7 +56,7 @@ function formatDate(value: string) {
 export default function CarDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const carId = params.carId as string;
 
   const [car, setCar] = useState<Car | null>(null);
@@ -58,6 +65,29 @@ export default function CarDetailsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeImage, setActiveImage] = useState('');
+  const [bookingStatus, setBookingStatus] = useState<CarBookingStatusItem | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [bookingBusy, setBookingBusy] = useState(false);
+  const [statusNotice, setStatusNotice] = useState('');
+  const [confirmStatus, setConfirmStatus] = useState<BookingStatus | null>(null);
+  const [cancelBookingOpen, setCancelBookingOpen] = useState(false);
+  const [bookOpen, setBookOpen] = useState(false);
+  const [blockTiming, setBlockTiming] = useState('24');
+
+  const loadBookingStatus = useCallback(async () => {
+    if (!token || !carId) return;
+    setStatusLoading(true);
+    try {
+      const res = await getCarsBookingStatusRequest(token);
+      const item = res.data.find((entry) => entry.carId === carId) ?? null;
+      setBookingStatus(item);
+    } catch {
+      setBookingStatus(null);
+    } finally {
+      setStatusLoading(false);
+    }
+  }, [token, carId]);
 
   const loadCar = useCallback(async () => {
     if (!token || !carId) return;
@@ -76,7 +106,70 @@ export default function CarDetailsPage() {
 
   useEffect(() => {
     loadCar();
-  }, [loadCar]);
+    loadBookingStatus();
+  }, [loadCar, loadBookingStatus]);
+
+  const applyStatusChange = async (status: BookingStatus) => {
+    if (!token || !car) return;
+    setStatusUpdating(true);
+    setError('');
+    setStatusNotice('');
+    try {
+      const res = await updateCarBookingStatusRequest(token, {
+        carId: car.id,
+        carNumber: car.carNumber,
+        status,
+        timing: status === 'NOT_AVAILABLE' ? blockTiming : undefined,
+      });
+      setStatusNotice(res.data?.message || res.message || 'Status updated');
+      setConfirmStatus(null);
+      await loadBookingStatus();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to update booking status');
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const confirmBook = async () => {
+    if (!token || !car) return;
+    const timing = blockTiming.trim() || String(car.customerPrices?.timing ?? 24);
+
+    setBookingBusy(true);
+    setError('');
+    setStatusNotice('');
+    try {
+      await createBookingRequest(token, {
+        carId: car.id,
+        carNumber: car.carNumber,
+        timing,
+      });
+      setStatusNotice(`${car.carName} booked successfully.`);
+      setBookOpen(false);
+      await loadBookingStatus();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to book car');
+    } finally {
+      setBookingBusy(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!token || !bookingStatus?.bookedBy?.bookingId) return;
+    setBookingBusy(true);
+    setError('');
+    setStatusNotice('');
+    try {
+      await cancelBookingRequest(token, bookingStatus.bookedBy.bookingId);
+      setStatusNotice('Booking cancelled. Car is available again.');
+      setCancelBookingOpen(false);
+      await loadBookingStatus();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to cancel booking');
+    } finally {
+      setBookingBusy(false);
+    }
+  };
 
   const confirmDelete = async () => {
     if (!token || !car) return;
@@ -120,6 +213,12 @@ export default function CarDetailsPage() {
 
   if (!car) return null;
 
+  const isOwnBooking = Boolean(
+    bookingStatus?.bookedBy && user?.id && bookingStatus.bookedBy.userId === user.id,
+  );
+  const isBooked = Boolean(bookingStatus?.isBooked);
+  const activeBookingId = bookingStatus?.bookedBy?.bookingId;
+
   const allImages = [
     { src: getImageUrl(car.mainImage), label: 'Main' },
     ...car.galleryImages.map((img, i) => ({
@@ -158,6 +257,12 @@ export default function CarDetailsPage() {
         </div>
       </div>
 
+      {statusNotice && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {statusNotice}
+        </div>
+      )}
+
       {error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
           {error}
@@ -178,6 +283,96 @@ export default function CarDetailsPage() {
         </div>
 
         <div className="grid gap-6 p-6 sm:p-8">
+          <div className="rounded-3xl bg-gradient-to-br from-slate-50 via-sky-50 to-blue-50 p-5 ring-1 ring-sky-100 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-sky-500">Booking status</h2>
+                <p className="mt-1 text-sm text-sky-600">Book, cancel, or override availability for this car</p>
+              </div>
+              {statusLoading ? (
+                <div className="h-9 w-28 animate-pulse rounded-full bg-sky-100" />
+              ) : (
+                <span
+                  className={`inline-flex w-fit rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide ring-1 ${
+                    bookingStatus?.status === 'NOT_AVAILABLE'
+                      ? 'bg-red-50 text-red-600 ring-red-100'
+                      : 'bg-emerald-50 text-emerald-600 ring-emerald-100'
+                  }`}
+                >
+                  {bookingStatus?.status === 'NOT_AVAILABLE' ? 'Not Available' : 'Available'}
+                </span>
+              )}
+            </div>
+
+            {bookingStatus?.bookedBy && (
+              <div className="mt-4 rounded-2xl bg-white/80 p-4 ring-1 ring-sky-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                  {isOwnBooking ? 'Your active booking' : 'Currently booked by'}
+                </p>
+                <p className="mt-1 font-semibold text-sky-900">{bookingStatus.bookedBy.user.name}</p>
+                <p className="text-sm text-sky-600">{bookingStatus.bookedBy.user.mobile}</p>
+                <p className="mt-1 text-xs text-sky-500">{bookingStatus.bookedBy.timing} hr rental</p>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-col gap-3">
+              {!isBooked ? (
+                <button
+                  type="button"
+                  disabled={statusLoading || bookingBusy}
+                  onClick={() => setBookOpen(true)}
+                  className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm font-bold text-white shadow-md transition hover:shadow-lg disabled:opacity-50"
+                >
+                  {bookingBusy ? 'Booking...' : 'Book This Car'}
+                </button>
+              ) : activeBookingId ? (
+                <button
+                  type="button"
+                  disabled={statusLoading || bookingBusy}
+                  onClick={() => setCancelBookingOpen(true)}
+                  className="flex min-h-[48px] w-full items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                >
+                  {bookingBusy ? 'Cancelling...' : isOwnBooking ? 'Cancel My Booking' : 'Cancel Active Booking'}
+                </button>
+              ) : null}
+
+              <div className="rounded-2xl border border-dashed border-sky-200 bg-white/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-sky-500">Admin override</p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                  {bookingStatus?.status !== 'NOT_AVAILABLE' && (
+                    <div className="sm:w-40">
+                      <label className="mb-1.5 block text-xs font-semibold text-sky-700">Timing (hours)</label>
+                      <input
+                        value={blockTiming}
+                        onChange={(e) => setBlockTiming(e.target.value)}
+                        className="w-full min-h-[44px] rounded-xl border border-sky-100 bg-white px-4 text-sm text-sky-900 outline-none focus:ring-2 focus:ring-sky-100"
+                        placeholder="24"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={statusLoading || statusUpdating || bookingStatus?.status === 'AVAILABLE'}
+                      onClick={() => setConfirmStatus('AVAILABLE')}
+                      className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    >
+                      Mark Available
+                    </button>
+                    <button
+                      type="button"
+                      disabled={statusLoading || statusUpdating || bookingStatus?.status === 'NOT_AVAILABLE'}
+                      onClick={() => setConfirmStatus('NOT_AVAILABLE')}
+                      className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                    >
+                      Mark Not Available
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wide text-sky-500">Description</h2>
             <p className="mt-2 text-base leading-relaxed text-sky-800">{car.description}</p>
@@ -290,6 +485,54 @@ export default function CarDetailsPage() {
         loading={deleting}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={bookOpen}
+        title="Confirm booking?"
+        message={
+          car
+            ? `Book ${car.carName} (${car.carNumber}) for ${blockTiming.trim() || String(car.customerPrices?.timing ?? 24)} hours?`
+            : ''
+        }
+        confirmLabel="Yes, book"
+        cancelLabel="Not now"
+        loading={bookingBusy}
+        onConfirm={confirmBook}
+        onCancel={() => setBookOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={cancelBookingOpen}
+        title="Cancel booking?"
+        message={`Cancel the active booking for ${car.carName} (${car.carNumber})? The car will become available again.`}
+        confirmLabel="Yes, cancel"
+        cancelLabel="Keep booking"
+        loading={bookingBusy}
+        onConfirm={handleCancelBooking}
+        onCancel={() => setCancelBookingOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmStatus === 'AVAILABLE'}
+        title="Mark car available?"
+        message={`Release ${car.carName} (${car.carNumber})? Any active booking will be cancelled and moved to history.`}
+        confirmLabel="Mark Available"
+        cancelLabel="Cancel"
+        loading={statusUpdating}
+        onConfirm={() => applyStatusChange('AVAILABLE')}
+        onCancel={() => setConfirmStatus(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmStatus === 'NOT_AVAILABLE'}
+        title="Mark car not available?"
+        message={`Block ${car.carName} (${car.carNumber}) for ${blockTiming || '24'} hours? Users will not be able to book it.`}
+        confirmLabel="Mark Not Available"
+        cancelLabel="Cancel"
+        loading={statusUpdating}
+        onConfirm={() => applyStatusChange('NOT_AVAILABLE')}
+        onCancel={() => setConfirmStatus(null)}
       />
     </div>
   );
