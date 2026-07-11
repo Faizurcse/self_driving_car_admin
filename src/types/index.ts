@@ -113,6 +113,8 @@ export interface CarBookingStatusItem {
   mainImage: string;
   status: BookingStatus;
   isBooked: boolean;
+  rentalHours: string;
+  bookedTiming?: string;
   bookedBy?: {
     bookingId: string;
     userId: string;

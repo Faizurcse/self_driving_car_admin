@@ -282,6 +282,11 @@ function CarCard({
             <span className="inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-sky-700 shadow-sm">
               {car.carNumber}
             </span>
+            {status && !status.isBooked && (
+              <span className="inline-flex rounded-full bg-emerald-500/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                {status.rentalHours}hr
+              </span>
+            )}
             {status && <StatusBadge status={status.status} isOwn={isOwnBooking} />}
           </div>
           <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-sky-600 opacity-0 shadow transition group-hover:opacity-100">
@@ -1065,7 +1070,7 @@ export default function CarsPage() {
 
   const confirmBook = async () => {
     if (!token || !bookTarget) return;
-    const timing = String(bookTarget.customerPrices?.timing ?? 24);
+    const timing = String(statusMap[bookTarget.id]?.rentalHours ?? bookTarget.customerPrices?.timing ?? 24);
 
     setActionCarId(bookTarget.id);
     setError('');
@@ -1376,7 +1381,7 @@ export default function CarsPage() {
         title="Confirm booking?"
         message={
           bookTarget
-            ? `Book ${bookTarget.carName} (${bookTarget.carNumber}) for ${String(bookTarget.customerPrices?.timing ?? 24)} hours?`
+            ? `Book ${bookTarget.carName} (${bookTarget.carNumber}) for ${String(statusMap[bookTarget.id]?.rentalHours ?? bookTarget.customerPrices?.timing ?? 24)} hours?`
             : ''
         }
         confirmLabel="Yes, book"

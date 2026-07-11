@@ -6,10 +6,10 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ApiError } from '@/lib/api';
 import { getImageUrl } from '@/lib/image-url';
 import { formatPriceWithTiming } from '@/lib/price';
-import { cancelBookingRequest, getAllBookingsAdminRequest, getMyBookingsRequest } from '@/lib/services';
+import { cancelBookingRequest, getAllBookingsAdminRequest, getMyBookingHistoryRequest, getMyBookingsRequest } from '@/lib/services';
 import { formatUserType } from '@/lib/user-type';
 import { useAuth } from '@/context/AuthContext';
-import type { Booking, BookingStatus } from '@/types';
+import type { BookedHistoryItem, Booking, HistoryAction } from '@/types';
 
 const filterInputClass =
   'w-full min-h-[44px] rounded-xl border border-sky-100 bg-white py-2.5 px-4 text-sm text-sky-900 shadow-sm shadow-sky-100/40 outline-none transition placeholder:text-sky-300 focus:border-sky-300 focus:ring-2 focus:ring-sky-100';
@@ -30,18 +30,103 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function StatusBadge({ status }: { status: BookingStatus }) {
-  const isActive = status === 'NOT_AVAILABLE';
+function StatusBadge() {
+  return (
+    <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-red-600 ring-1 ring-red-100">
+      Active
+    </span>
+  );
+}
+
+function ActionBadge({ action }: { action: HistoryAction }) {
+  const isCompleted = action === 'COMPLETED';
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1 ${
-        isActive
-          ? 'bg-red-50 text-red-600 ring-red-100'
-          : 'bg-emerald-50 text-emerald-600 ring-emerald-100'
+        isCompleted
+          ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+          : 'bg-amber-50 text-amber-700 ring-amber-100'
       }`}
     >
-      {isActive ? 'Not Available' : 'Available'}
+      {isCompleted ? 'Completed' : 'Cancelled'}
     </span>
+  );
+}
+
+function MyHistoryCard({ item }: { item: BookedHistoryItem }) {
+  const car = item.carJson;
+  const booking = item.bookingJson;
+  const priceInfo = car?.customerPrices ?? car?.dealerPrices ?? car?.ownerPrices;
+
+  return (
+    <article className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-sky-100/60 ring-1 ring-sky-100">
+      <div className="flex flex-col sm:flex-row">
+        {car?.mainImage && (
+          <div className="relative aspect-[16/10] shrink-0 bg-sky-50 sm:aspect-auto sm:w-48 md:w-56">
+            <img
+              src={getImageUrl(car.mainImage)}
+              alt={car.carName}
+              className="h-full w-full object-cover sm:min-h-[180px]"
+            />
+            <div className="absolute left-3 top-3">
+              <ActionBadge action={item.action} />
+            </div>
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1 p-4 sm:p-5">
+          {!car?.mainImage && (
+            <div className="mb-3">
+              <ActionBadge action={item.action} />
+            </div>
+          )}
+
+          <div className="rounded-2xl bg-violet-50/80 p-3 ring-1 ring-violet-100">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-400">My past booking</p>
+            <p className="mt-1 font-bold text-violet-900">{item.carName}</p>
+            <p className="text-xs text-violet-700">{item.carNumber}</p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+            {booking?.timing && (
+              <div className="rounded-xl bg-amber-50 px-3 py-2 ring-1 ring-amber-100">
+                <span className="text-[10px] font-bold uppercase text-amber-500">Rental</span>
+                <p className="font-bold text-amber-900">{booking.timing} hr</p>
+              </div>
+            )}
+            {priceInfo && (
+              <div className="rounded-xl bg-orange-50 px-3 py-2 ring-1 ring-orange-100">
+                <span className="text-[10px] font-bold uppercase text-orange-500">Price</span>
+                <p className="font-bold text-orange-900">
+                  {formatPriceWithTiming(priceInfo.price, priceInfo.timing)}
+                </p>
+              </div>
+            )}
+            <div className="rounded-xl bg-sky-50 px-3 py-2 ring-1 ring-sky-100">
+              <span className="text-[10px] font-bold uppercase text-sky-400">
+                {item.action === 'COMPLETED' ? 'Completed on' : 'Cancelled on'}
+              </span>
+              <p className="text-xs font-semibold text-sky-800">{formatDate(item.createdAt)}</p>
+            </div>
+            {booking?.createdAt && (
+              <div className="rounded-xl bg-violet-50 px-3 py-2 ring-1 ring-violet-100">
+                <span className="text-[10px] font-bold uppercase text-violet-400">Booked on</span>
+                <p className="text-xs font-semibold text-violet-800">{formatDate(booking.createdAt)}</p>
+              </div>
+            )}
+          </div>
+
+          {car && (
+            <Link
+              href={`/cars/${car.id}`}
+              className="mt-4 inline-flex min-h-[40px] items-center justify-center rounded-xl border border-sky-100 bg-sky-50 px-4 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+            >
+              View car
+            </Link>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -59,7 +144,6 @@ function BookingCard({
   const car = booking.car;
   const user = booking.user;
   const priceInfo = car?.customerPrices ?? car?.dealerPrices ?? car?.ownerPrices;
-  const isActive = booking.status === 'NOT_AVAILABLE';
 
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-lg shadow-sky-100/60 ring-1 ring-sky-100 transition hover:shadow-xl">
@@ -72,7 +156,7 @@ function BookingCard({
               className="h-full w-full object-cover sm:min-h-[180px]"
             />
             <div className="absolute left-3 top-3 flex flex-col gap-1.5">
-              <StatusBadge status={booking.status} />
+              <StatusBadge />
               {variant === 'my' && (
                 <span className="inline-flex rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                   My booking
@@ -90,7 +174,7 @@ function BookingCard({
             </div>
             {!car?.mainImage && (
               <div className="flex flex-col items-end gap-1.5">
-                <StatusBadge status={booking.status} />
+                <StatusBadge />
                 {variant === 'my' && (
                   <span className="inline-flex rounded-full bg-violet-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                     My booking
@@ -153,16 +237,14 @@ function BookingCard({
                 View car
               </Link>
             )}
-            {isActive && (
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={busy}
-                className="flex min-h-[40px] flex-1 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 sm:flex-none sm:px-4"
-              >
-                {busy ? 'Cancelling...' : 'Cancel booking'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="flex min-h-[40px] flex-1 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-sm font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 sm:flex-none sm:px-4"
+            >
+              {busy ? 'Cancelling...' : 'Cancel booking'}
+            </button>
           </div>
         </div>
       </div>
@@ -173,17 +255,21 @@ function BookingCard({
 export default function BookingsPage() {
   const { token } = useAuth();
   const [tab, setTab] = useState<'all' | 'my'>('all');
+  const [mySubTab, setMySubTab] = useState<'active' | 'history'>('active');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
+  const [myHistory, setMyHistory] = useState<BookedHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [myLoading, setMyLoading] = useState(true);
+  const [myHistoryLoading, setMyHistoryLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [actionId, setActionId] = useState<string | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Booking | null>(null);
 
-  const [statusFilter, setStatusFilter] = useState<BookingStatus | ''>('');
   const [carNumberFilter, setCarNumberFilter] = useState('');
   const [userNameFilter, setUserNameFilter] = useState('');
+  const [myHistoryFilter, setMyHistoryFilter] = useState<HistoryAction | ''>('');
 
   const loadAllBookings = useCallback(async () => {
     if (!token) return;
@@ -213,20 +299,32 @@ export default function BookingsPage() {
     }
   }, [token]);
 
+  const loadMyHistory = useCallback(async () => {
+    if (!token) return;
+    setMyHistoryLoading(true);
+    try {
+      const res = await getMyBookingHistoryRequest(token, { limit: 50 });
+      setMyHistory(res.data);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to load your booking history');
+    } finally {
+      setMyHistoryLoading(false);
+    }
+  }, [token]);
+
   const loadBookings = useCallback(async () => {
-    await Promise.all([loadAllBookings(), loadMyBookings()]);
-  }, [loadAllBookings, loadMyBookings]);
+    await Promise.all([loadAllBookings(), loadMyBookings(), loadMyHistory()]);
+  }, [loadAllBookings, loadMyBookings, loadMyHistory]);
 
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
 
-  const activeList = tab === 'all' ? bookings : myBookings;
-  const activeLoading = tab === 'all' ? loading : myLoading;
+  const activeList = tab === 'all' ? bookings : mySubTab === 'active' ? myBookings : [];
+  const activeLoading = tab === 'all' ? loading : mySubTab === 'active' ? myLoading : myHistoryLoading;
 
   const filteredBookings = useMemo(() => {
     return activeList.filter((booking) => {
-      if (statusFilter && booking.status !== statusFilter) return false;
       if (carNumberFilter.trim() && !booking.carNumber.toLowerCase().includes(carNumberFilter.trim().toLowerCase())) {
         return false;
       }
@@ -235,19 +333,24 @@ export default function BookingsPage() {
       }
       return true;
     });
-  }, [activeList, statusFilter, carNumberFilter, userNameFilter, tab]);
+  }, [activeList, carNumberFilter, userNameFilter, tab]);
 
   const stats = useMemo(() => {
-    const active = bookings.filter((b) => b.status === 'NOT_AVAILABLE').length;
-    const myActive = myBookings.filter((b) => b.status === 'NOT_AVAILABLE').length;
+    const myCompleted = myHistory.filter((item) => item.action === 'COMPLETED').length;
+    const myCancelled = myHistory.filter((item) => item.action === 'CANCELLED').length;
     return {
-      total: bookings.length,
-      active,
-      available: bookings.length - active,
-      myTotal: myBookings.length,
-      myActive,
+      allActive: bookings.length,
+      myActive: myBookings.length,
+      myHistory: myHistory.length,
+      myCompleted,
+      myCancelled,
     };
-  }, [bookings, myBookings]);
+  }, [bookings.length, myBookings.length, myHistory]);
+
+  const filteredMyHistory = useMemo(() => {
+    if (!myHistoryFilter) return myHistory;
+    return myHistory.filter((item) => item.action === myHistoryFilter);
+  }, [myHistory, myHistoryFilter]);
 
   const confirmCancel = async () => {
     if (!token || !cancellingBooking) return;
@@ -255,8 +358,10 @@ export default function BookingsPage() {
     setError('');
     try {
       await cancelBookingRequest(token, cancellingBooking.id);
+      setNotice('Booking cancelled. It will appear in history.');
       setCancellingBooking(null);
       await loadBookings();
+      setTimeout(() => setNotice(''), 4000);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to cancel booking');
     } finally {
@@ -265,12 +370,12 @@ export default function BookingsPage() {
   };
 
   const clearFilters = () => {
-    setStatusFilter('');
     setCarNumberFilter('');
     setUserNameFilter('');
+    setMyHistoryFilter('');
   };
 
-  const hasFilters = Boolean(statusFilter || carNumberFilter || userNameFilter);
+  const hasFilters = Boolean(carNumberFilter || userNameFilter || myHistoryFilter);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -280,7 +385,11 @@ export default function BookingsPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-100">Reservations</p>
             <h1 className="mt-1 text-3xl font-bold">Bookings</h1>
             <p className="mt-2 max-w-2xl text-sm text-sky-50">
-              All vehicle bookings with user details, car info and availability status.
+              Only <strong>active</strong> bookings here. Completed or cancelled →{' '}
+              <Link href="/history" className="font-semibold underline underline-offset-2">
+                History
+              </Link>
+              .
             </p>
           </div>
           <button
@@ -291,22 +400,26 @@ export default function BookingsPage() {
             Refresh
           </button>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
-            <p className="text-xs uppercase text-sky-100">All bookings</p>
-            <p className="mt-1 text-2xl font-bold">{stats.total}</p>
-          </div>
-          <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
-            <p className="text-xs uppercase text-sky-100">Active</p>
-            <p className="mt-1 text-2xl font-bold">{stats.active}</p>
-          </div>
-          <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
-            <p className="text-xs uppercase text-sky-100">My bookings</p>
-            <p className="mt-1 text-2xl font-bold">{stats.myTotal}</p>
+            <p className="text-xs uppercase text-sky-100">All active</p>
+            <p className="mt-1 text-2xl font-bold">{stats.allActive}</p>
           </div>
           <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
             <p className="text-xs uppercase text-sky-100">My active</p>
             <p className="mt-1 text-2xl font-bold">{stats.myActive}</p>
+          </div>
+          <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
+            <p className="text-xs uppercase text-sky-100">My completed</p>
+            <p className="mt-1 text-2xl font-bold">{stats.myCompleted}</p>
+          </div>
+          <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
+            <p className="text-xs uppercase text-sky-100">My cancelled</p>
+            <p className="mt-1 text-2xl font-bold">{stats.myCancelled}</p>
+          </div>
+          <div className="rounded-2xl bg-white/15 p-4 ring-1 ring-white/20">
+            <p className="text-xs uppercase text-sky-100">My history</p>
+            <p className="mt-1 text-2xl font-bold">{stats.myHistory}</p>
           </div>
         </div>
       </section>
@@ -336,6 +449,39 @@ export default function BookingsPage() {
         </button>
       </div>
 
+      {tab === 'my' && (
+        <div className="flex gap-2 rounded-2xl bg-violet-50/80 p-1.5 ring-1 ring-violet-100">
+          <button
+            type="button"
+            onClick={() => setMySubTab('active')}
+            className={`min-h-[40px] flex-1 rounded-xl text-sm font-semibold transition ${
+              mySubTab === 'active'
+                ? 'bg-violet-600 text-white shadow-sm'
+                : 'text-violet-700 hover:bg-white/70'
+            }`}
+          >
+            Active ({stats.myActive})
+          </button>
+          <button
+            type="button"
+            onClick={() => setMySubTab('history')}
+            className={`min-h-[40px] flex-1 rounded-xl text-sm font-semibold transition ${
+              mySubTab === 'history'
+                ? 'bg-violet-600 text-white shadow-sm'
+                : 'text-violet-700 hover:bg-white/70'
+            }`}
+          >
+            My History ({stats.myHistory})
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {notice}
+        </div>
+      )}
+
       {error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
           {error}
@@ -343,33 +489,59 @@ export default function BookingsPage() {
       )}
 
       <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-sky-100 sm:p-5">
-        <h2 className="text-lg font-bold text-sky-900">Filters</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as BookingStatus | '')}
-            className={filterInputClass}
-          >
-            <option value="">All statuses</option>
-            <option value="NOT_AVAILABLE">Not Available</option>
-            <option value="AVAILABLE">Available</option>
-          </select>
-          <input
-            value={carNumberFilter}
-            onChange={(e) => setCarNumberFilter(e.target.value)}
-            className={filterInputClass}
-            placeholder="Car number"
-          />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-bold text-sky-900">
+            {tab === 'my' && mySubTab === 'history' ? 'My history filters' : 'Filters'}
+          </h2>
           {tab === 'all' && (
-            <input
-              value={userNameFilter}
-              onChange={(e) => setUserNameFilter(e.target.value)}
-              className={filterInputClass}
-              placeholder="User name"
-            />
+            <Link
+              href="/history"
+              className="text-sm font-semibold text-sky-600 hover:text-sky-800"
+            >
+              View all users history →
+            </Link>
           )}
         </div>
-        {hasFilters && (
+        {tab === 'my' && mySubTab === 'history' ? (
+          <div className="mt-4">
+            <select
+              value={myHistoryFilter}
+              onChange={(e) => setMyHistoryFilter(e.target.value as HistoryAction | '')}
+              className={filterInputClass}
+            >
+              <option value="">All history</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <input
+              value={carNumberFilter}
+              onChange={(e) => setCarNumberFilter(e.target.value)}
+              className={filterInputClass}
+              placeholder="Car number"
+            />
+            {tab === 'all' && (
+              <input
+                value={userNameFilter}
+                onChange={(e) => setUserNameFilter(e.target.value)}
+                className={filterInputClass}
+                placeholder="User name"
+              />
+            )}
+          </div>
+        )}
+        {hasFilters && tab === 'my' && mySubTab === 'history' && myHistoryFilter && (
+          <button
+            type="button"
+            onClick={() => setMyHistoryFilter('')}
+            className="mt-4 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            Clear filters
+          </button>
+        )}
+        {hasFilters && !(tab === 'my' && mySubTab === 'history') && (
           <button
             type="button"
             onClick={clearFilters}
@@ -380,7 +552,30 @@ export default function BookingsPage() {
         )}
       </section>
 
-      {activeLoading ? (
+      {tab === 'my' && mySubTab === 'history' ? (
+        myHistoryLoading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="animate-pulse overflow-hidden rounded-3xl bg-white ring-1 ring-sky-100">
+                <div className="aspect-[16/10] bg-sky-100 sm:min-h-[180px]" />
+              </div>
+            ))}
+          </div>
+        ) : filteredMyHistory.length === 0 ? (
+          <div className="rounded-3xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-sky-100">
+            <p className="text-lg font-bold text-sky-900">No history yet</p>
+            <p className="mt-2 text-sm text-sky-500">
+              When your rental time ends or you cancel, trips appear here as Completed or Cancelled.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredMyHistory.map((item) => (
+              <MyHistoryCard key={item.id} item={item} />
+            ))}
+          </div>
+        )
+      ) : activeLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="animate-pulse overflow-hidden rounded-3xl bg-white ring-1 ring-sky-100">
@@ -402,7 +597,9 @@ export default function BookingsPage() {
             {hasFilters
               ? 'Try changing your filters.'
               : tab === 'my'
-                ? 'Your bookings will appear here when you book a vehicle.'
+                ? mySubTab === 'active'
+                  ? 'No active bookings. Book a car from Cars page.'
+                  : 'No history records yet.'
                 : 'Bookings will appear here when users book vehicles.'}
           </p>
         </div>
@@ -412,7 +609,7 @@ export default function BookingsPage() {
             <BookingCard
               key={booking.id}
               booking={booking}
-              variant={tab}
+              variant={tab === 'my' ? 'my' : 'all'}
               busy={actionId === booking.id}
               onCancel={() => setCancellingBooking(booking)}
             />

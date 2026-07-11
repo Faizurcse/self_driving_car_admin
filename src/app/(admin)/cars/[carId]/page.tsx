@@ -133,7 +133,7 @@ export default function CarDetailsPage() {
 
   const confirmBook = async () => {
     if (!token || !car) return;
-    const timing = blockTiming.trim() || String(car.customerPrices?.timing ?? 24);
+    const timing = blockTiming.trim() || String(bookingStatus?.rentalHours ?? car.customerPrices?.timing ?? 24);
 
     setBookingBusy(true);
     setError('');
@@ -292,15 +292,24 @@ export default function CarDetailsPage() {
               {statusLoading ? (
                 <div className="h-9 w-28 animate-pulse rounded-full bg-sky-100" />
               ) : (
-                <span
-                  className={`inline-flex w-fit rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide ring-1 ${
-                    bookingStatus?.status === 'NOT_AVAILABLE'
-                      ? 'bg-red-50 text-red-600 ring-red-100'
-                      : 'bg-emerald-50 text-emerald-600 ring-emerald-100'
-                  }`}
-                >
-                  {bookingStatus?.status === 'NOT_AVAILABLE' ? 'Not Available' : 'Available'}
-                </span>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className={`inline-flex w-fit rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide ring-1 ${
+                      bookingStatus?.status === 'NOT_AVAILABLE'
+                        ? 'bg-red-50 text-red-600 ring-red-100'
+                        : 'bg-emerald-50 text-emerald-600 ring-emerald-100'
+                    }`}
+                  >
+                    {bookingStatus?.status === 'NOT_AVAILABLE' ? 'Not Available' : 'Available'}
+                  </span>
+                  {bookingStatus && (
+                    <span className="text-xs font-semibold text-sky-600">
+                      {bookingStatus.isBooked
+                        ? `Booked for ${bookingStatus.bookedBy?.timing ?? bookingStatus.bookedTiming ?? '—'} hr`
+                        : `Rental: ${bookingStatus.rentalHours} hr`}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
@@ -492,7 +501,7 @@ export default function CarDetailsPage() {
         title="Confirm booking?"
         message={
           car
-            ? `Book ${car.carName} (${car.carNumber}) for ${blockTiming.trim() || String(car.customerPrices?.timing ?? 24)} hours?`
+            ? `Book ${car.carName} (${car.carNumber}) for ${blockTiming.trim() || String(bookingStatus?.rentalHours ?? car.customerPrices?.timing ?? 24)} hours?`
             : ''
         }
         confirmLabel="Yes, book"

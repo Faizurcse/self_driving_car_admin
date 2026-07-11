@@ -7,6 +7,7 @@ import type {
   Car,
   CarBookingStatusItem,
   CarFilters,
+  HistoryAction,
   PaginationMeta,
   UpdateCarBookingStatusResult,
   User,
@@ -133,6 +134,25 @@ export async function getAllBookingsAdminRequest(token: string) {
 
 export async function getMyBookingsRequest(token: string) {
   return apiRequest<Booking[]>('/bookings/my', { method: 'GET' }, token);
+}
+
+export async function getMyBookingHistoryRequest(
+  token: string,
+  filters: { action?: HistoryAction | ''; page?: number; limit?: number } = {},
+) {
+  const params = new URLSearchParams();
+  if (filters.action) params.set('action', filters.action);
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.limit) params.set('limit', String(filters.limit));
+  const query = params.toString();
+  const endpoint = query ? `/bookings/history/my?${query}` : '/bookings/history/my';
+
+  const res = (await apiRequest(endpoint, { method: 'GET' }, token)) as {
+    success: boolean;
+    data: BookedHistoryItem[];
+    pagination: PaginationMeta;
+  };
+  return res;
 }
 
 export async function createBookingRequest(
