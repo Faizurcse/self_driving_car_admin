@@ -1,3 +1,8 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
@@ -9,6 +14,32 @@ type ConfirmDialogProps = {
   onCancel: () => void;
 };
 
+let scrollLockCount = 0;
+let savedOverflow = '';
+let savedPaddingRight = '';
+
+function lockBodyScroll() {
+  if (scrollLockCount === 0) {
+    savedOverflow = document.body.style.overflow;
+    savedPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+  }
+  scrollLockCount += 1;
+
+  return () => {
+    scrollLockCount -= 1;
+    if (scrollLockCount <= 0) {
+      scrollLockCount = 0;
+      document.body.style.overflow = savedOverflow;
+      document.body.style.paddingRight = savedPaddingRight;
+    }
+  };
+}
+
 export function ConfirmDialog({
   open,
   title,
@@ -19,18 +50,47 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-sky-950/60 p-0 backdrop-blur-md sm:items-center sm:p-4">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    return lockBodyScroll();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || loading) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCancel();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, loading, onCancel]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-sky-950/60 p-4 backdrop-blur-sm"
+      onClick={() => {
+        if (!loading) onCancel();
+      }}
+      role="presentation"
+    >
       <div
-        className="w-full max-w-md overflow-hidden rounded-t-[2rem] bg-white shadow-2xl shadow-sky-300/30 sm:rounded-[2rem]"
+        className="w-full max-w-md rounded-[2rem] bg-white shadow-2xl shadow-sky-300/30"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-message"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-br from-red-500 via-red-500 to-rose-600 px-5 py-5 sm:px-6">
+        <div className="rounded-t-[2rem] bg-gradient-to-br from-red-500 via-red-500 to-rose-600 px-5 py-5 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
               <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -72,6 +132,7 @@ export function ConfirmDialog({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
