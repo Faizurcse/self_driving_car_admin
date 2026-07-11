@@ -27,6 +27,12 @@ export interface PriceInfo {
   description: string;
 }
 
+export interface ContactUsInfo {
+  name?: string;
+  mobile?: string;
+  email?: string;
+}
+
 export interface Car {
   id: string;
   carNumber: string;
@@ -38,6 +44,7 @@ export interface Car {
   ownerPrices?: PriceInfo | null;
   dealerPrices: PriceInfo;
   customerPrices: PriceInfo;
+  contactUs?: ContactUsInfo | null;
   createdAt: string;
   updatedAt: string;
 }

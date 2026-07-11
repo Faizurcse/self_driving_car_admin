@@ -242,6 +242,32 @@ export default function CarDetailsPage() {
             </div>
           </div>
 
+          {car.contactUs && (car.contactUs.name || car.contactUs.mobile || car.contactUs.email) && (
+            <div>
+              <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-sky-500">Contact Us</h2>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {car.contactUs.name && (
+                  <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 p-4 ring-1 ring-sky-100">
+                    <p className="text-xs font-bold uppercase text-sky-400">Name</p>
+                    <p className="mt-1 text-sm font-semibold text-sky-900">{car.contactUs.name}</p>
+                  </div>
+                )}
+                {car.contactUs.mobile && (
+                  <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 p-4 ring-1 ring-sky-100">
+                    <p className="text-xs font-bold uppercase text-sky-400">Mobile</p>
+                    <p className="mt-1 text-sm font-semibold text-sky-900">{car.contactUs.mobile}</p>
+                  </div>
+                )}
+                {car.contactUs.email && (
+                  <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-50 p-4 ring-1 ring-sky-100">
+                    <p className="text-xs font-bold uppercase text-sky-400">Email</p>
+                    <p className="mt-1 text-sm font-semibold text-sky-900">{car.contactUs.email}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 border-t border-sky-100 pt-6 sm:grid-cols-2">
             <div className="rounded-2xl bg-sky-50/70 p-4 ring-1 ring-sky-100">
               <p className="text-xs font-bold uppercase text-sky-400">Created</p>

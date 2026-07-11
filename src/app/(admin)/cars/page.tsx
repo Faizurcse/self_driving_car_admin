@@ -37,6 +37,9 @@ type CarFormState = {
   customerPrice: string;
   customerPriceTiming: string;
   customerPriceDesc: string;
+  contactName: string;
+  contactMobile: string;
+  contactEmail: string;
   mainImageFile: File | null;
   galleryFiles: File[];
 };
@@ -57,6 +60,9 @@ const emptyForm: CarFormState = {
   customerPrice: '',
   customerPriceTiming: '24',
   customerPriceDesc: '',
+  contactName: '',
+  contactMobile: '',
+  contactEmail: '',
   mainImageFile: null,
   galleryFiles: [],
 };
@@ -88,6 +94,9 @@ function carToForm(car: Car): CarFormState {
     customerPrice: String(car.customerPrices.price),
     customerPriceTiming: String(car.customerPrices.timing),
     customerPriceDesc: car.customerPrices.description,
+    contactName: car.contactUs?.name || '',
+    contactMobile: car.contactUs?.mobile || '',
+    contactEmail: car.contactUs?.email || '',
     mainImageFile: null,
     galleryFiles: [],
   };
@@ -128,6 +137,22 @@ function buildCarFormData(form: CarFormState, existingCar?: Car | null) {
       description: form.customerPriceDesc.trim(),
     }),
   );
+
+  const hasContact =
+    form.contactName.trim() || form.contactMobile.trim() || form.contactEmail.trim();
+
+  if (hasContact) {
+    fd.append(
+      'contactUs',
+      JSON.stringify({
+        ...(form.contactName.trim() && { name: form.contactName.trim() }),
+        ...(form.contactMobile.trim() && { mobile: form.contactMobile.trim() }),
+        ...(form.contactEmail.trim() && { email: form.contactEmail.trim() }),
+      }),
+    );
+  } else if (existingCar) {
+    fd.append('contactUs', JSON.stringify({}));
+  }
 
   if (form.mainImageFile) {
     fd.append('mainImage', form.mainImageFile);
@@ -801,6 +826,44 @@ function CarFormModal({
                     onChange={(e) => setForm((f) => ({ ...f, customerPriceDesc: e.target.value }))}
                     className={`${inputClass} mt-2`}
                     placeholder="Description"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-3xl bg-sky-50/60 p-4 ring-1 ring-sky-100 sm:p-5">
+              <h3 className="mb-1 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-sky-700">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500 text-xs text-white">5</span>
+                Contact Us
+              </h3>
+              <p className="mb-4 text-xs text-sky-500">Optional — name, mobile and email for this vehicle</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-sky-800">Name</label>
+                  <input
+                    value={form.contactName}
+                    onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))}
+                    className={inputClass}
+                    placeholder="Contact person name"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-sky-800">Mobile</label>
+                  <input
+                    value={form.contactMobile}
+                    onChange={(e) => setForm((f) => ({ ...f, contactMobile: e.target.value }))}
+                    className={inputClass}
+                    placeholder="9876543210"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-sky-800">Email</label>
+                  <input
+                    type="email"
+                    value={form.contactEmail}
+                    onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))}
+                    className={inputClass}
+                    placeholder="contact@example.com"
                   />
                 </div>
               </div>
