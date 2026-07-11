@@ -1,5 +1,6 @@
 import { apiFormRequest, apiRequest } from '@/lib/api';
 import type {
+  AdminDashboardStats,
   AuthData,
   BookedHistoryFilters,
   BookedHistoryItem,
@@ -50,6 +51,10 @@ export async function updateProfileRequest(
 
 export async function getUserTypesRequest(token: string) {
   return apiRequest<UserType[]>('/admin/types', { method: 'GET' }, token);
+}
+
+export async function getAdminDashboardRequest(token: string) {
+  return apiRequest<AdminDashboardStats>('/admin/dashboard', { method: 'GET' }, token);
 }
 
 export async function getAllUsersRequest(

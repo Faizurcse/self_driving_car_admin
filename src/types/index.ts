@@ -132,3 +132,81 @@ export interface UpdateCarBookingStatusResult {
   message: string;
   booking?: Booking;
 }
+
+export interface AdminDashboardStats {
+  users: {
+    total: number;
+    customers: number;
+    dealers: number;
+    admins: number;
+  };
+  cars: {
+    total: number;
+    available: number;
+    booked: number;
+  };
+  bookings: {
+    active: number;
+    completed: number;
+    cancelled: number;
+    total: number;
+  };
+  earnings: {
+    total: number;
+    currency: string;
+  };
+  periods: {
+    today: AdminDashboardPeriodStats;
+    days15: AdminDashboardPeriodStats;
+    days30: AdminDashboardPeriodStats;
+    year1: AdminDashboardPeriodStats;
+  };
+  charts: {
+    usersByType: AdminDashboardChartItem[];
+    carsByStatus: AdminDashboardChartItem[];
+    bookingsByStatus: AdminDashboardChartItem[];
+    earningsByPeriod: Array<{ label: string; value: number }>;
+    bookingsByPeriod: Array<{
+      label: string;
+      completed: number;
+      cancelled: number;
+      total: number;
+    }>;
+  };
+  recentActiveBookings: Array<{
+    id: string;
+    carId: string;
+    carNumber: string;
+    carName: string | null;
+    timing: string;
+    createdAt: string;
+    user?: Pick<User, 'id' | 'name' | 'mobile' | 'email' | 'userType'>;
+  }>;
+  recentHistory: Array<{
+    id: string;
+    carId: string;
+    carNumber: string;
+    carName: string;
+    action: HistoryAction;
+    userName: string;
+    userMobile: string;
+    amount: number;
+    createdAt: string;
+    user?: Pick<User, 'id' | 'name' | 'mobile' | 'email' | 'userType'>;
+  }>;
+}
+
+export interface AdminDashboardPeriodStats {
+  earnings: number;
+  bookings: {
+    completed: number;
+    cancelled: number;
+    total: number;
+  };
+}
+
+export interface AdminDashboardChartItem {
+  label: string;
+  value: number;
+  color?: string;
+}
